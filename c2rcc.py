@@ -21,7 +21,7 @@ outFolder = r"D:/Sentinel"
 jpy = snappy.jpy
 
 dictionary = {}
-for root, dirs, files in os.walk (path):
+for root, dirs, files in os.walk (inFolder):
     for name in files:
         if name.endswith((".dim")) and not name.startswith('.'):
                 
