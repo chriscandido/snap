@@ -15,7 +15,8 @@ from snappy import ProductIO
 import fileinput
 import subprocess
 
-path = r"D:/c2rcc"
+inFolder = r"D:/c2rcc"
+outFolder = r"D:/Sentinel"
 
 jpy = snappy.jpy
 
@@ -23,7 +24,6 @@ dictionary = {}
 for root, dirs, files in os.walk (path):
     for name in files:
         if name.endswith((".dim")) and not name.startswith('.'):
-                print ('Filename', name)
                 
                 sal = 35.0
                 temp = 15.0
@@ -51,9 +51,9 @@ for root, dirs, files in os.walk (path):
                 outputKd=True
                 outputUncertainties=True
 
-                inFolder = str(path + '/' + name)
-                OLI=ProductIO.readProduct(inFolder)
-                print ('C2RCC')
+                OLI=ProductIO.readProduct(inFolder + "/" + name)
+                print ("C2RCC...")
+                print ("File: ", inFolder + "/" + name)
                 HashMap = jpy.get_type('java.util.HashMap')
                 parameters = HashMap()
                 parameters.put('validPixelExpression','(!quality_flags.invalid && (!quality_flags.land || quality_flags.fresh_inland_water))')
@@ -83,7 +83,7 @@ for root, dirs, files in os.walk (path):
                 parameters.put('outputKd',outputKd)
                 parameters.put('outputUncertainties',outputUncertainties)
                 result = GPF.createProduct('c2rcc.olci', parameters, OLI)
-                tmpName = path+"/" + name.split(".dim")[0]+"_c2rcc.dim"
+                tmpName = outFolder + "/" + name.split(".dim")[0]+ "_c2rcc.dim"
                 ProductIO.writeProduct(result,tmpName,"BEAM-DIMAP")
                 print ("Product Writing .... ")
 print ('DONE')
