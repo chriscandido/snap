@@ -1,9 +1,6 @@
 import datetime
 import time
 import numpy 
-import scipy 
-import shutil
-import sys
 import os
 import gc
 
