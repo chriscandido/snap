@@ -15,6 +15,18 @@ from snappy import ProductIO
 
 jpy = snappy.jpy
 
+def do_convert_to_dim(source, name):
+    print ('\tConverting to DIM')
+    product = ProductIO.readProduct(source)
+    HashMap = jpy.get_type('java.util.HashMap')
+    parameters = HashMap()
+    GPF.getDefaultInstance().getOperatorSpiRegistry().loadOperatorSpis()
+    parameters.put('file', name)
+    parameters.put('fileFormat', 'BEAM-DIMAP')
+    
+    output = GPF.createProduct('Write', parameters, product)
+    return output
+
 ## Resampling 
 def do_resampling(source):
     print ('\tResampling ...')
@@ -83,11 +95,20 @@ def do_band_maths(source):
 
 def main():
     ## All Sentinel-2 data subfolders are located within a super folder (make sure data is already unzipped and each sub folder name ends with .SAFE)
+    raw = r'D:\Misc\Raw'
     path = r'D:\Misc\Test'
     outpath = r'D:\Misc\Out'
 
     if not os.path.exists(outpath):
         os.makedirs(outpath)
+    
+    for files in os.listdir(raw): 
+        safe = raw + "\\" + files + "\\MTD_MSIL2A.xml"
+        print ('Filename: ', safe)
+        result = do_convert_to_dim(safe, files.split('.SAFE')[0])
+        ProductIO.writeProduct(result, path + "\\" + files.split('.SAFE')[0] + '.dim', 'BEAM-DIMAP')
+        print ('Done.')
+    print ('Start Processing ...')
     
     for root, dirs, files in os.walk(path):
         for name in files:
