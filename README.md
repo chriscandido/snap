@@ -3,7 +3,7 @@
 ### c2rcc.py :: automatic processing of sentinel-3 images using c2rcc workflow
 
 ### s2Indices.py :: automatic processing of sentinel-2 images to generate biophysical parameter (LAI, FVC) and different indices
-<br>&nbsp;Index :: 
+<br>    Index :: 
 <br>&nbsp;&nbsp;a. VEGETATION
 <br>&nbsp;&nbsp;&nbsp;NDTI = ((SWIR 1 - SWIR 2)/(SWIR 1 + SWIR 2)) 
 <br>&nbsp;&nbsp;&nbsp;NDVIre = ((RE 1 - Red)/(RE 1 + Red))
