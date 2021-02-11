@@ -1,11 +1,13 @@
-import datetime
-import time
-import numpy 
+## Import Python Modules
 import os
-import gc
-
+import sys
+import time
+import numpy
+from numpy.core.fromnumeric import product
 import snappy
-from snappy import GPF
+import datetime
+
+from snappy import Band, GPF
 from snappy import HashMap
 from snappy import Product
 from snappy import ProductUtils
@@ -14,98 +16,98 @@ from snappy import ProductIO
 jpy = snappy.jpy
 
 ## Resampling 
-def do_resampling (source):
+def do_resampling(source):
     print ('\tResampling ...')
+    product = ProductIO.readProduct(source)
     HashMap = jpy.get_type('java.util.HashMap')
     parameters = HashMap()
     GPF.getDefaultInstance().getOperatorSpiRegistry().loadOperatorSpis()
     parameters.put('targetResolution', 10)
 
-    output = GPF.createProduct('Resample', parameters, source)
+    output = GPF.createProduct('Resample', parameters, product)
     return output
 
 ## Biophysical Parameters
-def do_biophysical_parameter (source):
+def do_biophysical_parameter(source):
     print ('\tBiophysical Parameters ...')
     HashMap = jpy.get_type('java.util.HashMap')
     parameters = HashMap()
     GPF.getDefaultInstance().getOperatorSpiRegistry().loadOperatorSpis()
-    parameters.put('targetResolution', 10)
     parameters.put('computeLAI', True)
     ##parameters.put('computeFcover', True)
 
     output = GPF.createProduct('BiophysicalOp', parameters, source)
     return output
 
-## Indices 
-def do_vegetation_indices (source):
-    print ('\tVegetation Indices ...')
-    ## Input product and dimensions
-    input_product = ProductIO.readProduct(source)
-    width = input_product.getSceneRasterWidth()
-    height = input_product.getSceneRasterHeight()
-    product_name = input_product.getName()
-    product_description = input_product.getDescription()
-    product_band_names = input_product.getBandNames()
+def do_band_maths(source):
+    ## Input product, dimensions, and properties
+    print ('\tBand Indices ...')
+    product = source
+    ## product = ProductIO.readProduct(source)
+    width = product.getSceneRasterWidth()
+    height = product.getSceneRasterHeight()
+    name = product.getName()
+    description = product.getDescription()
+    bandNames = product.getBandNames()
+
+    print ("Product: %s, %d x %d pixels, %s" % (name, width, height, description))
+    print ("Bands: %s", (list(bandNames)))
 
     GPF.getDefaultInstance().getOperatorSpiRegistry().loadOperatorSpis()
+    BandDescriptor = jpy.get_type('org.esa.snap.core.gpf.common.BandMathsOp$BandDescriptor')
 
-    ## input product red and nir bands
-    b4 = input_product.getBand('B4')
-    b8 = input_product.getBand('B8')
+    ## NDVI
+    targetBand1 = BandDescriptor()
+    targetBand1.name = 'ndvi'
+    targetBand1.type = 'float32'
+    targetBand1.expression = '(B8 - B4) / (B4 + B8)'
 
-    ## output product (ndvi) new band
-    output_product = Product('NDVI', 'NDVI', width, height)
-    ProductUtils.copyGeoCoding(input_product, output_product)
-    output_band = output_product.addBand('ndvi', ProductData.TYPE_FLOAT32)
+    ## BSI
+    targetBand2 = BandDescriptor()
+    targetBand2.name = 'bsi'
+    targetBand2.type = 'float32'
+    targetBand2.expression = '((B11 + B4) - (B8 + B2)) / ((B11 + B4) + (B8 + B2))'
 
-    ## output writer
-    output_product_writer = ProductIO.getProductWriter('BEAM-DIMAP')
-    output_product.setProductWriter(output_product_writer)
-    output_product.writeHeader(product_name + '_ndvi.dim')
+    targetBands = jpy.array('org.esa.snap.core.gpf.common.BandMathsOp$BandDescriptor', 2)
+    targetBands[0] = targetBand1
+    targetBands[1] = targetBand2
 
-    ## compute & save ndvi line by line
-    red_row = numpy.zeros(width, dtype=numpy.float32)
-    nir_row = numpy.zeros(width, dtype=numpy.float32)
+    HashMap = jpy.get_type('java.util.HashMap')
+    parameters = HashMap()
+    parameters.put('targetBands', targetBands)
 
-    for y in xrange (height):
-        red_row = b4.readPixels(0, y, width, 1, red_row)
-        nir_row = b8.readPixels(0, y, width, 1, nir_row)
-        ndvi = (nir_row - red_row)/(nir_row + red_row)
-        output = output_band.writePixels(0, y, width, 1, ndvi)
+    result = GPF.createProduct('BandMaths', parameters, product)
+    print ('Writing ...')
 
-    output_product.CloseIO()
-    return output
+    return result
 
 def main():
     ## All Sentinel-2 data subfolders are located within a super folder (make sure data is already unzipped and each sub folder name ends with .SAFE)
-    path = r'D:\Sentinel\test'
-    outpath = r'D:\Sentinel\out'
+    path = r'D:\Misc\Test'
+    outpath = r'D:\Misc\Out'
+
     if not os.path.exists(outpath):
         os.makedirs(outpath)
     
-    for folder in os.listdir(path):
-        gc.enable()
-        gc.collect()
-        print ("Filname: ", path + "\\" + folder + "\\manifest.safe")
-        ##sentinel2 = path + "\\" + folder + "\\MTD_MSIL1C.xml"
-        sentinel2 = ProductIO.readProduct(path + "\\" + folder + "\\MTD_MSIL1C.xml")
+    for root, dirs, files in os.walk(path):
+        for name in files:
+            if name.endswith((".dim")) and not name.startswith('.'):
+                ## Image Filename
+                imgFile = path + "/" + name
+                print ("Filename: ", imgFile)
 
-        loopstarttime = str(datetime.datetime.now())
-        print ('Start time: ', loopstarttime)
-        start_time = time.time()
+                loopstarttime = str(datetime.datetime.now())
+                print ("Start time: ", loopstarttime)
+                startTime = time.time()
 
-        ## Extract mode, product type
-        modestamp = folder.split("_")[1]
-        productstamp = folder.split("_")[2]
-        
-        ## Start preprocessing 
-        resample = do_resampling(sentinel2)
-        biOp = do_biophysical_parameter(resample)
-        ##ndvi = do_vegetation_indices(sentinel2)
-        print ("outFilename: ", outpath + "\\" + folder.split(".SAFE")[0] + '_biOp' + '.dim')
-        ProductIO.writeProduct(biOp, outpath + "\\" + folder.split(".SAFE")[0] + '_biOp' + '.dim', "BEAM-DIMAP")
-       
+                ## Start processing
+                print ("Processing ...")
+                resample = do_resampling(imgFile)
+                result = do_band_maths(resample)
+                outFileName = outpath + "/" + name.split(".dim")[0] + "_indices.dim"
+                ProductIO.writeProduct(result, outFileName, 'BEAM-DIMAP')
+                print ("Done.")       
+                print("--- %s seconds ---" % (time.time() - startTime))
 
 if __name__=="__main__":
     main()
