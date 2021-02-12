@@ -6,7 +6,7 @@ A. c2rcc.py
 
 B. s2Indices.py 
 -
-> *automatic processing of sentinel-2 images to generate biophysical parameter (LAI, FVC) and different indices*
+> *automatic processing of sentinel-2 images to generate biophysical parameter (LAI, FVC) and different indices. Includes unzipping of file, converting of .SAFE to .dim, and processing of indices*
 > 
 > **List of Indices**
 >  <br>A. Vegetation<br>
